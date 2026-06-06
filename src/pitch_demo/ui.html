@@ -187,6 +187,28 @@ html,body{height:100%;overflow:hidden;font-family:var(--font);
   background:rgba(77,157,255,.08);color:var(--accent);
   border-color:rgba(77,157,255,.2)
 }
+.deliv.link{cursor:pointer;transition:border-color .15s,background .15s,transform .15s}
+.deliv.link:hover{border-color:var(--accent);background:rgba(77,157,255,.05);transform:translateY(-2px)}
+.deliv-open{margin-top:12px;font-size:11px;font-weight:600;color:#8ac4ff;display:flex;align-items:center;gap:6px}
+.deliv.link:hover .deliv-open{color:#cfe7ff}
+/* ── Sparkly card ─────────────────────────────────────────────────────────── */
+.deliv.sparkle{position:relative;overflow:hidden;animation:sparkGlow 3s ease-in-out infinite}
+@keyframes sparkGlow{0%,100%{box-shadow:0 0 0 rgba(77,157,255,0)}50%{box-shadow:0 0 24px rgba(77,157,255,.28)}}
+.deliv.sparkle::after{content:'';position:absolute;top:0;left:-60%;width:55%;height:100%;
+  pointer-events:none;transform:skewX(-20deg);
+  background:linear-gradient(115deg,transparent,rgba(180,215,255,.14),transparent);
+  animation:sparkSweep 3.6s ease-in-out infinite}
+@keyframes sparkSweep{0%{left:-60%}55%,100%{left:140%}}
+.spark{position:absolute;pointer-events:none;color:#cfe7ff;line-height:1;
+  text-shadow:0 0 6px rgba(150,200,255,.95),0 0 12px rgba(120,170,255,.6);
+  animation:twinkle 1.9s ease-in-out infinite}
+@keyframes twinkle{0%,100%{opacity:0;transform:scale(.3)}50%{opacity:1;transform:scale(1)}}
+/* ── Goldie "fly to tab" transition ──────────────────────────────────────── */
+#goldie-fly{position:fixed;z-index:9999;width:230px;height:auto;pointer-events:none;
+  mix-blend-mode:screen;opacity:0;
+  transform:translate(-50%,-50%) scale(.7);will-change:left,top,transform,opacity}
+@keyframes navPop{0%{transform:scale(1)}40%{transform:scale(1.22)}100%{transform:scale(1)}}
+.nav-pop{animation:navPop .4s ease}
 
 /* ── Results stats ────────────────────────────────────────────────────── */
 .stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
@@ -706,7 +728,13 @@ html,body{height:100%;overflow:hidden;font-family:var(--font);
               </div>
             </div>
 
-            <div class="deliv">
+            <div class="deliv link sparkle" onclick="goldieFly(event, 'videos')" title="Open the Demo Videos tab">
+              <span class="spark" style="top:10%;left:90%;font-size:15px;animation-delay:0s">✦</span>
+              <span class="spark" style="top:24%;left:78%;font-size:9px;animation-delay:.5s">✦</span>
+              <span class="spark" style="top:62%;left:94%;font-size:12px;animation-delay:1.1s">✦</span>
+              <span class="spark" style="top:84%;left:6%;font-size:10px;animation-delay:.8s">✦</span>
+              <span class="spark" style="top:14%;left:4%;font-size:8px;animation-delay:1.4s">✦</span>
+              <span class="spark" style="top:48%;left:88%;font-size:8px;animation-delay:1.7s">✧</span>
               <div class="deliv-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
                   <rect x="2" y="2" width="20" height="20" rx="2.5"/>
@@ -725,6 +753,10 @@ html,body{height:100%;overflow:hidden;font-family:var(--font);
                 <span class="dtag">Depth map</span>
                 <span class="dtag">Live BEV</span>
                 <span class="dtag">YOLO dist.</span>
+              </div>
+              <div class="deliv-open">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                Open Demo Videos →
               </div>
             </div>
 
@@ -877,6 +909,9 @@ html,body{height:100%;overflow:hidden;font-family:var(--font);
   <video id="modal-video" controls></video>
 </div>
 
+<!-- Goldie fly-to-tab transition -->
+<img id="goldie-fly" src="" alt="">
+
 <script>
 // ── Navigation ─────────────────────────────────────────────────────────────
 function show(name) {
@@ -899,6 +934,41 @@ function show(name) {
     }
   }
   if (name === 'overview') runCounters();
+}
+
+// Goldie flies from the clicked card to the target nav tab, then opens it
+function goldieFly(ev, page) {
+  const start  = ev.currentTarget.getBoundingClientRect();
+  const navEl  = document.getElementById('nav-' + page);
+  const target = navEl.getBoundingClientRect();
+  const fly    = document.getElementById('goldie-fly');
+
+  fly.src = '';                                   // restart the gif from frame 1
+  fly.src = '/pitch_demo/assets/goldie.gif';
+
+  // place small at the card center, no animation yet
+  fly.style.transition = 'none';
+  fly.style.left = (start.left + start.width / 2) + 'px';
+  fly.style.top  = (start.top  + start.height / 2) + 'px';
+  fly.style.transform = 'translate(-50%,-50%) scale(.7)';
+  fly.style.opacity = '1';
+  void fly.offsetWidth;                           // force reflow so the next change animates
+
+  // fly to the tab over 2s, shrinking + spinning, fading near the end
+  fly.style.transition =
+    'left 2s cubic-bezier(.55,-0.2,.3,1.25), top 2s cubic-bezier(.55,-0.2,.3,1.25),' +
+    'transform 2s ease, opacity .5s ease 1.5s';
+  fly.style.left = (target.left + target.width / 2) + 'px';
+  fly.style.top  = (target.top  + target.height / 2) + 'px';
+  fly.style.transform = 'translate(-50%,-50%) scale(.16)';
+  fly.style.opacity = '0';
+
+  // when it lands: pop the tab and open it
+  setTimeout(() => {
+    navEl.classList.add('nav-pop');
+    setTimeout(() => navEl.classList.remove('nav-pop'), 420);
+    show(page);
+  }, 1950);
 }
 
 // ── Animated counters ──────────────────────────────────────────────────────
@@ -1032,12 +1102,22 @@ const CARDS = [
     line: 'but that’s <em>not</em> easy.',
     sec: 14,
   },
-  // ── DE CONTINUAT: problemă → soluție → demo → închidere ─────────────────────
+  // ── BRIDGE: de la „matematica e grea” → rețele pre-antrenate pe NPU ──────────
   {
-    kicker: '— de continuat —',
-    title: 'So here’s what we built.',
-    line: '(adaugă restul pitch-ului aici, în array-ul CARDS)',
-    sec: 10,
+    title: 'So we don’t make it learn.',
+    line: 'We hand it brains that <em>already</em> did.',
+    sec: 12,
+  },
+  {
+    kicker: 'Pre-trained neural networks',
+    title: 'Neural networks.',
+    line: 'Trained on millions of images — they learned to see, so our one-eyed baby doesn’t have to.',
+    sec: 16,
+  },
+  {
+    title: 'Running on our own <em>neural processor</em>.',
+    line: 'A dedicated NPU — the trained brains run live, on the edge. No cloud, no waiting.',
+    sec: 16,
   },
 ];
 
@@ -1069,7 +1149,7 @@ function pitchRender(){
   else { img.removeAttribute('src'); card.classList.remove('has-img'); }
   document.getElementById('pitch-count').textContent = `Secțiune ${pitchIdx+1} / ${CARDS.length}`;
   document.getElementById('pitch-prev').disabled = pitchIdx === 0;
-  document.getElementById('pitch-next').textContent = pitchIdx === CARDS.length-1 ? 'Sfârșit ✓' : 'Următor ›';
+  document.getElementById('pitch-next').textContent = pitchIdx === CARDS.length-1 ? 'Process & Results →' : 'Următor ›';
   document.getElementById('pitch-dots').innerHTML = CARDS.map((_, i) =>
     `<div class="pitch-dot ${i===pitchIdx?'active':(i<pitchIdx?'done':'')}" onclick="pitchGo(${i})" title="${CARDS[i].kicker}"></div>`
   ).join('');
@@ -1077,7 +1157,7 @@ function pitchRender(){
 }
 
 function pitchGo(i){ pitchIdx = Math.max(0, Math.min(CARDS.length-1, i)); pitchRender(); }
-function pitchNext(){ if (pitchIdx < CARDS.length-1) pitchGo(pitchIdx+1); }
+function pitchNext(){ if (pitchIdx < CARDS.length-1) pitchGo(pitchIdx+1); else show('overview'); }
 function pitchPrev(){ if (pitchIdx > 0) pitchGo(pitchIdx-1); }
 
 function pitchOnShow(){ pitchRender(); if (!pitchTimerId) pitchTimerId = setInterval(() => { pitchSecLeft--; pitchTotal++; pitchPaintTimer(); }, 1000); }
