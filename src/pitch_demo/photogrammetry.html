@@ -175,6 +175,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
   <div class="hud" id="hud">
     <div class="hud-name" id="hud-name">—</div>
     <div class="hud-pts"  id="hud-pts">—</div>
+    <div id="tour-msg" style="margin-top:7px;color:#9fe7c4;font-size:11px">&#128266; Audio tour: ON &nbsp;<span style="color:var(--dim)">(M = mute)</span></div>
   </div>
 
   <div class="controls-bar" id="ctrl-bar">
@@ -405,6 +406,8 @@ function loadScene(s) {
       document.getElementById('hud-name').textContent = s.label;
       document.getElementById('hud-pts').textContent  = nPts.toLocaleString() + ' points';
 
+      buildMarkers(s.id);   // place detected-object markers for this scene
+
       document.getElementById('ov-load').classList.add('gone');
       document.getElementById('ov-enter').classList.remove('gone');
     },
@@ -453,6 +456,108 @@ window.addEventListener('resize', () => {
 });
 ptUniforms.resolution.value.set(vw(), vh());
 
+// ── Object markers + audio tour ──────────────────────────────────────────────
+let OBJECTS = {};            // sceneId -> [{name,x,y,z,dist}]
+let markers = [];            // {mesh, sph, name, pos, lastSpoke}
+let tourOn  = true;
+const ANNOUNCE_R = 4.5;      // metres: within this radius -> announce
+const RESPEAK_MS = 3000;     // cooldown before re-announcing the same object
+const GOOD = new Set(['refrigerator','person','chair','couch','tv','laptop','bottle',
+  'cup','bowl','sink','toilet','oven','microwave','book','clock','potted plant','bed',
+  'backpack','suitcase','vase','dining table','keyboard','mouse','cell phone']);
+
+fetch('/output/objects.json').then(r => r.ok ? r.json() : {}).then(d => {
+  OBJECTS = d || {}; if (activeId) buildMarkers(activeId);
+}).catch(() => {});
+
+function clearMarkers() {
+  markers.forEach(m => { scene3.remove(m.mesh);
+    m.mesh.traverse(o => { if (o.geometry) o.geometry.dispose();
+      if (o.material) { if (o.material.map) o.material.map.dispose(); o.material.dispose(); } }); });
+  markers = [];
+}
+
+function roundRect(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);
+  c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath();}
+
+function labelSprite(text) {
+  const pad = 18, fs = 42;
+  const cv = document.createElement('canvas');
+  let cx = cv.getContext('2d');
+  cx.font = `bold ${fs}px Segoe UI, sans-serif`;
+  const tw = cx.measureText(text).width;
+  cv.width = tw + pad*2; cv.height = fs + pad*2;
+  cx = cv.getContext('2d');
+  cx.font = `bold ${fs}px Segoe UI, sans-serif`;
+  cx.fillStyle = 'rgba(8,8,24,.82)';
+  cx.strokeStyle = 'rgba(120,200,255,.9)'; cx.lineWidth = 3;
+  roundRect(cx, 2, 2, cv.width-4, cv.height-4, 14); cx.fill(); cx.stroke();
+  cx.fillStyle = '#e3f0ff'; cx.textBaseline = 'middle';
+  cx.fillText(text, pad, cv.height/2 + 2);
+  const tex = new THREE.CanvasTexture(cv); tex.minFilter = THREE.LinearFilter;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
+  sp.scale.set(cv.width / cv.height * 0.55, 0.55, 1);
+  return sp;
+}
+
+function buildMarkers(sid) {
+  clearMarkers();
+  const list = (OBJECTS[sid] || []).filter(o => GOOD.has(o.name));
+  for (const o of list) {
+    const g = new THREE.Group();
+    g.position.set(o.x, o.y, o.z);
+    const sph = new THREE.Mesh(new THREE.SphereGeometry(0.16, 16, 16),
+      new THREE.MeshBasicMaterial({ color: 0x4d9dff }));
+    g.add(sph);
+    const halo = new THREE.Mesh(new THREE.SphereGeometry(0.30, 16, 16),
+      new THREE.MeshBasicMaterial({ color: 0x4d9dff, transparent: true, opacity: 0.16, depthWrite: false }));
+    g.add(halo);
+    const lab = labelSprite(o.name); lab.position.set(0, 0.5, 0); g.add(lab);
+    scene3.add(g);
+    markers.push({ mesh: g, sph, name: o.name, pos: g.position.clone(), lastSpoke: -1e9 });
+  }
+}
+
+function speak(text) {
+  try {
+    const ss = window.speechSynthesis; if (!ss) return;
+    if (ss.speaking) ss.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 1.0; u.pitch = 1.0; u.lang = 'en-US';
+    ss.speak(u);
+  } catch (e) {}
+}
+
+function updateAudioTour() {
+  if (markers.length === 0) return;
+  const now = performance.now();
+  let best = null, bestD = Infinity;
+  for (const m of markers) {
+    const d = camera.position.distanceTo(m.pos);
+    m.sph.material.color.setHex(d < ANNOUNCE_R ? 0x3dffa0 : 0x4d9dff);
+    if (d < bestD) { bestD = d; best = m; }
+  }
+  if (tourOn && best && bestD < ANNOUNCE_R &&
+      (now - best.lastSpoke) > RESPEAK_MS && !window.speechSynthesis.speaking) {
+    best.lastSpoke = now;
+    const md = bestD.toFixed(1);
+    speak(`${best.name}, ${md} meters`);
+    document.getElementById('tour-msg').innerHTML =
+      `&#128266; ${best.name} &mdash; ${md} m`;
+  }
+}
+
+// M = toggle audio tour
+document.addEventListener('keydown', e => {
+  if (e.code === 'KeyM') {
+    tourOn = !tourOn;
+    if (!tourOn && window.speechSynthesis) window.speechSynthesis.cancel();
+    document.getElementById('tour-msg').innerHTML = tourOn
+      ? '&#128266; Audio tour: ON &nbsp;<span style="color:var(--dim)">(M = mute)</span>'
+      : '&#128263; Audio tour: OFF &nbsp;<span style="color:var(--dim)">(M = unmute)</span>';
+  }
+});
+
 // ── Animate ─────────────────────────────────────────────────────────────────
 const clock = new THREE.Clock();
 const STEP_SIZE = 0.015;
@@ -473,6 +578,8 @@ const STEP_SIZE = 0.015;
     // [ ] keys: fine point size adjustment while walking
     if (keys['BracketLeft'])  setPtSize(ptUniforms.ptSize.value - STEP_SIZE);
     if (keys['BracketRight']) setPtSize(ptUniforms.ptSize.value + STEP_SIZE);
+
+    updateAudioTour();   // announce nearby detected objects (TTS)
   } else {
     orbit.update();
   }
