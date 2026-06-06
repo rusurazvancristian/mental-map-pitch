@@ -1,0 +1,16 @@
+# ── Pitch demo app (run pitch_demo/launcher.py) ──────────────────────────────
+pywebview>=4.4
+opencv-python>=4.8.0
+numpy>=1.24.0
+
+# ── SLAM / 3D reconstruction pipeline (regenerate the demo data) ──────────────
+torch>=2.1.0
+torchvision>=0.16.0
+transformers>=4.38.0,<5.0.0
+ultralytics>=8.0.0
+Pillow>=10.0.0
+tqdm>=4.65.0
+matplotlib>=3.7.0
+
+# Build the standalone .exe (optional):
+# pyinstaller>=6.0
