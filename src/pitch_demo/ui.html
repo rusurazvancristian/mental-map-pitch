@@ -417,6 +417,13 @@ html,body{height:100%;overflow:hidden;font-family:var(--font);
       </svg>
       Demo Videos
     </div>
+    <div class="nav-item" id="nav-feed" onclick="show('feed')">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="2"/>
+        <path d="M16.24 7.76a6 6 0 010 8.49M7.76 16.24a6 6 0 010-8.49M19.07 4.93a10 10 0 010 14.14M4.93 19.07a10 10 0 010-14.14"/>
+      </svg>
+      Live Demo Feed
+    </div>
     <div class="nav-item" id="nav-photo" onclick="show('photo')">
       <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
         <circle cx="5"  cy="5"  r="1.5"/><circle cx="12" cy="3"  r="1.5"/><circle cx="19" cy="6"  r="1.5"/>
@@ -577,7 +584,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--font);
                 </svg>
               </div>
               <div class="pipe-name">Depth Estimation</div>
-              <div class="pipe-tech">DepthAnything V2<br>Metric Indoor · ×0.55</div>
+              <div class="pipe-tech">DepthAnything V2<br>Metric Indoor · calibrated</div>
             </div>
 
             <div class="pipe-step">
@@ -669,8 +676,8 @@ html,body{height:100%;overflow:hidden;font-family:var(--font);
                   <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
                 </svg>
               </div>
-              <div class="pipe-name">DepthAnything V2</div>
-              <div class="pipe-tech">Hailo NPU<br>dense disparity</div>
+              <div class="pipe-name">FastDepth</div>
+              <div class="pipe-tech">indoor-trained · Hailo<br>+ Depth Anything map</div>
             </div>
 
             <div class="pipe-step">
@@ -841,6 +848,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--font);
       <span class="tag">Hailo-8 NPU — 26 TOPS</span>
       <span class="tag">Raspberry Pi 5</span>
       <span class="tag">YOLO26m</span>
+      <span class="tag">FastDepth — indoor</span>
       <span class="tag">ByteTrack</span>
       <span class="tag">Kalman Fusion</span>
       <span class="tag">RepVGG ReID</span>
@@ -895,6 +903,43 @@ html,body{height:100%;overflow:hidden;font-family:var(--font);
     <div class="vids-grid" id="vids-grid"></div>
   </div>
 
+  <!-- ═══════════════════ LIVE DEMO FEED ═══════════════════ -->
+  <div class="page" id="page-feed">
+    <div style="display:flex;flex-direction:column;height:100%;background:#05050d">
+
+      <!-- control bar -->
+      <div style="display:flex;align-items:center;gap:12px;padding:13px 20px;background:#0a0a1e;border-bottom:1px solid #1c1c3a;flex-wrap:wrap">
+        <div style="font-size:17px;font-weight:600;color:#dce4ff;display:flex;align-items:center;gap:9px">
+          <span id="feed-dot" style="width:9px;height:9px;border-radius:50%;background:#556;transition:.3s"></span>
+          Live Demo Feed
+        </div>
+        <span id="feed-status" style="font-size:12px;color:#7782a8;min-width:54px">idle</span>
+        <div style="flex:1;min-width:20px"></div>
+        <span style="font-size:12px;color:#5b6488">Engine B · Raspberry Pi 5 · Hailo-8L</span>
+        <input id="feed-url" value="http://192.168.10.1:8090/stream" spellcheck="false"
+          onkeydown="if(event.key==='Enter')feedConnect()"
+          style="width:230px;padding:7px 10px;font:13px 'Courier New',monospace;color:#cdd6f4;background:#05050f;border:1px solid #2a2a4a;border-radius:7px;outline:none">
+        <button onclick="feedConnect()" style="padding:7px 15px;font-size:13px;font-weight:600;color:#07071a;background:#4d9dff;border:none;border-radius:7px;cursor:pointer">Connect</button>
+        <button onclick="feedStop()" style="padding:7px 13px;font-size:13px;color:#acd;background:#0a0a2a;border:1px solid #335;border-radius:7px;cursor:pointer">Stop</button>
+        <button onclick="feedFullscreen()" title="Fullscreen" style="padding:7px 13px;font-size:14px;color:#acd;background:#0a0a2a;border:1px solid #335;border-radius:7px;cursor:pointer">⛶</button>
+      </div>
+
+      <!-- viewport -->
+      <div id="feed-stage" style="flex:1;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#05050d">
+        <img id="feed-img" alt="" style="max-width:100%;max-height:100%;object-fit:contain;display:none">
+        <div id="feed-placeholder" style="text-align:center;color:#4a5278;padding:40px">
+          <svg viewBox="0 0 24 24" width="56" height="56" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="opacity:.6">
+            <circle cx="12" cy="12" r="2"/>
+            <path d="M16.24 7.76a6 6 0 010 8.49M7.76 16.24a6 6 0 010-8.49M19.07 4.93a10 10 0 010 14.14M4.93 19.07a10 10 0 010-14.14"/>
+          </svg>
+          <div style="margin-top:16px;font-size:15px;color:#6b76a0">Waiting for the live stream…</div>
+          <div style="margin-top:6px;font-size:12.5px;color:#454d70">MJPEG feed from the Raspberry Pi · press <b style="color:#7782a8">Connect</b></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
 </div><!-- /.content -->
 </div><!-- /.app -->
 
@@ -920,6 +965,7 @@ function show(name) {
   document.getElementById('page-' + name).classList.add('active');
   document.getElementById('nav-'  + name).classList.add('active');
   if (name === 'pitch') pitchOnShow(); else pitchOnLeave();
+  if (name === 'feed') feedOnShow(); else feedOnLeave();
   if (name === 'map') {
     const f = document.getElementById('map-frame');
     if (!f.src || !f.src.includes('demo_3d')) {
@@ -935,6 +981,68 @@ function show(name) {
   }
   if (name === 'overview') runCounters();
 }
+
+// ── Live Demo Feed (RPi MJPEG stream) ───────────────────────────────────────
+// Pulls the live annotated video from the Raspberry Pi (Engine B). A standard
+// MJPEG stream (multipart/x-mixed-replace) renders straight into an <img> —
+// no player needed. Edit the URL field at demo time if the Pi address differs.
+let feedWatchdog = null, feedLive = false;
+
+function feedSet(status, statusColor, dotColor){
+  const s = document.getElementById('feed-status');
+  s.textContent = status; s.style.color = statusColor;
+  const d = document.getElementById('feed-dot');
+  d.style.background = dotColor;
+  d.style.boxShadow = dotColor === '#3dffa0' ? '0 0 8px #3dffa0' : 'none';
+}
+
+function feedConnect(){
+  const url = document.getElementById('feed-url').value.trim();
+  if (!url) { feedSet('enter a stream URL', '#ff8a8a', '#a33'); return; }
+  const img = document.getElementById('feed-img');
+  document.getElementById('feed-placeholder').style.display = 'none';
+  img.style.display = 'none';
+  feedLive = false;
+  feedSet('connecting…', '#ffd479', '#ffd479');
+
+  img.onload  = () => { feedLive = true; img.style.display = ''; feedSet('live', '#3dffa0', '#3dffa0'); };
+  img.onerror = () => feedFail();
+
+  clearTimeout(feedWatchdog);
+  feedWatchdog = setTimeout(() => { if (!feedLive) feedFail(); }, 8000);
+
+  // Route through the app's own /feed/stream proxy (same-origin → no WebView2
+  // private-network block). cache-bust so a reconnect reopens the socket.
+  img.src = '/feed/stream?src=' + encodeURIComponent(url) + '&_ts=' + Date.now();
+}
+
+function feedFail(){
+  feedLive = false;
+  clearTimeout(feedWatchdog);
+  const img = document.getElementById('feed-img');
+  img.src = ''; img.style.display = 'none';
+  document.getElementById('feed-placeholder').style.display = '';
+  feedSet('no signal — check the Pi & URL', '#ff8a8a', '#a33');
+}
+
+function feedStop(){
+  feedLive = false;
+  clearTimeout(feedWatchdog);
+  const img = document.getElementById('feed-img');
+  img.src = '';                 // drops the MJPEG connection
+  img.style.display = 'none';
+  document.getElementById('feed-placeholder').style.display = '';
+  feedSet('stopped', '#7782a8', '#556');
+}
+
+function feedFullscreen(){
+  const st = document.getElementById('feed-stage');
+  if (!document.fullscreenElement) { if (st.requestFullscreen) st.requestFullscreen(); }
+  else if (document.exitFullscreen) document.exitFullscreen();
+}
+
+function feedOnShow(){ if (!feedLive) feedConnect(); }  // auto-connect on entry
+function feedOnLeave(){ feedStop(); }                   // free the socket when leaving
 
 // Goldie flies from the clicked card to the target nav tab, then opens it
 function goldieFly(ev, page) {
@@ -1110,14 +1218,23 @@ const CARDS = [
   },
   {
     kicker: 'Pre-trained neural networks',
-    title: 'Neural networks.',
-    line: 'Trained on millions of images — they learned to see, so our one-eyed baby doesn’t have to.',
-    sec: 16,
+    title: 'Three trained brains.',
+    line: 'Each already learned to see on millions of images — so our one-eyed baby doesn’t have to.',
+    sec: 14,
   },
   {
-    title: 'Running on our own <em>neural processor</em>.',
-    line: 'A dedicated NPU — the trained brains run live, on the edge. No cloud, no waiting.',
-    sec: 16,
+    title: 'Each one does a single job.',
+    bullets: [
+      '<b>YOLO26m</b> — names <em>what</em> it sees',
+      '<b>FastDepth</b>, indoor-trained — judges <em>how far</em>',
+      '<b>Depth&nbsp;Anything</b> — builds the <em>visual map</em>',
+    ],
+    sec: 20,
+  },
+  {
+    title: 'All of it live, on our own <em>neural processor</em>.',
+    line: 'The Hailo NPU runs all three on the edge — no cloud, no waiting.',
+    sec: 14,
   },
 ];
 

@@ -5,7 +5,7 @@ Mental Map SLAM — Pitch Demo Launcher
 """
 import os, sys, threading, time
 from pathlib import Path
-import http.server
+import http.server, socketserver, urllib.parse, urllib.request
 
 # ── Resolve base directory ─────────────────────────────────────────────────
 # In dev  → D:\mental_map_slam  (two levels above this file)
@@ -18,6 +18,10 @@ else:
 OUTPUT_DIR = BASE_DIR / "output"
 THUMB_DIR  = BASE_DIR / "pitch_demo" / "thumbs"
 PORT       = 8765
+
+# Default Raspberry Pi MJPEG stream proxied by the /feed/stream route below.
+# The "Live Demo Feed" tab can override it via ?src=… ; this is just the default.
+PI_STREAM_DEFAULT = "http://192.168.10.1:8090/stream"
 
 
 # ── Thumbnail extraction ───────────────────────────────────────────────────
@@ -50,10 +54,55 @@ class _SilentHandler(http.server.SimpleHTTPRequestHandler):
     def log_message(self, *_): pass
     def log_error(self, *_):   pass
 
+    def do_GET(self):
+        # Same-origin MJPEG proxy for the Live Demo Feed tab. The browser/WebView2
+        # blocks loading a private-network (192.168.x) stream from the UI page,
+        # and the Pi serves only one stream client at a time — so we relay it here
+        # (server-side urllib has no such restrictions) under our own origin.
+        if self.path.startswith("/feed/stream"):
+            self._proxy_feed()
+        else:
+            super().do_GET()
+
+    def _proxy_feed(self):
+        src = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get(
+            "src", [PI_STREAM_DEFAULT])[0]
+        if not (src.startswith("http://") or src.startswith("https://")):
+            src = PI_STREAM_DEFAULT
+        try:
+            up = urllib.request.urlopen(src, timeout=5)
+        except Exception:
+            try: self.send_error(502, "stream unreachable")
+            except Exception: pass
+            return
+        ctype = up.headers.get("Content-Type",
+                               "multipart/x-mixed-replace; boundary=frame")
+        self.send_response(200)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Cache-Control", "no-cache, no-store")
+        self.end_headers()
+        try:
+            while True:
+                chunk = up.read(16384)
+                if not chunk:
+                    break
+                self.wfile.write(chunk)          # relay frame bytes 1:1
+        except Exception:
+            pass                                  # client navigated away / Pi dropped
+        finally:
+            try: up.close()
+            except Exception: pass
+
+
+class _ThreadingServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
+    # Threaded so the long-lived MJPEG stream doesn't starve the rest of the UI.
+    daemon_threads = True
+    allow_reuse_address = True
+
 
 def _start_server() -> None:
     os.chdir(str(BASE_DIR))          # serve files relative to BASE_DIR
-    srv = http.server.HTTPServer(("127.0.0.1", PORT), _SilentHandler)
+    srv = _ThreadingServer(("127.0.0.1", PORT), _SilentHandler)
     srv.serve_forever()
 
 
